@@ -1,11 +1,13 @@
 const TelegramBot = require("node-telegram-bot-api");
 
-const { BOT_TOKEN, CHECK_INTERVAL } = require("./config");
+const { BOT_TOKEN, CHAT_ID, CHECK_INTERVAL } = require("./config");
 const { checkDates } = require("./checker");
 
 const bot = new TelegramBot(BOT_TOKEN, {
   polling: true
 });
+
+let paused = false;
 
 bot.onText(/\/start/, async (msg) => {
   await bot.sendMessage(
@@ -20,7 +22,7 @@ bot.onText(/\/check/, async (msg) => {
     "🔍 Vérification manuelle..."
   );
 
-  await checkDates();
+  await checkDates(bot);
 
   await bot.sendMessage(
     msg.chat.id,
@@ -28,33 +30,84 @@ bot.onText(/\/check/, async (msg) => {
   );
 });
 
-function isAllowedTime() {
+function getAlgeriaHour() {
   const now = new Date();
 
-  const algeriaHour = Number(
+  return Number(
     now.toLocaleString("en-US", {
       timeZone: "Africa/Algiers",
       hour: "2-digit",
       hour12: false
     })
   );
+}
 
-  return algeriaHour >= 0 && algeriaHour < 9;
+function isAllowedTime() {
+  const hour = getAlgeriaHour();
+
+  return hour >= 0 && hour < 9;
 }
 
 async function scheduledCheck() {
-  if (isAllowedTime()) {
-    console.log("Checking dates...");
-    await checkDates();
-  } else {
-    console.log("Outside allowed hours");
+  try {
+    if (isAllowedTime()) {
+
+      if (paused) {
+        paused = false;
+
+        await bot.sendMessage(
+          CHAT_ID,
+          "▶️ Bot relancé automatiquement (00h-09h Algérie)"
+        );
+      }
+
+      console.log("Checking dates...");
+
+      await bot.sendMessage(
+        CHAT_ID,
+        "🔍 Vérification des rendez-vous..."
+      );
+
+      await checkDates(bot);
+
+    } else {
+
+      if (!paused) {
+        paused = true;
+
+        await bot.sendMessage(
+          CHAT_ID,
+          "⏸️ Bot en pause jusqu'à minuit (heure Algérie)"
+        );
+      }
+
+      console.log("Outside allowed hours");
+    }
+
+  } catch (err) {
+
+    console.error(err);
+
+    await bot.sendMessage(
+      CHAT_ID,
+      `⚠️ Erreur bot:\n${err.message}`
+    );
   }
 }
 
-console.log("Bot started");
+(async () => {
 
-scheduledCheck();
+  console.log("Bot started");
 
-setInterval(() => {
-  scheduledCheck();
-}, CHECK_INTERVAL);
+  await bot.sendMessage(
+    CHAT_ID,
+    "🚀 Bot Markabati DZ démarré."
+  );
+
+  await scheduledCheck();
+
+  setInterval(async () => {
+    await scheduledCheck();
+  }, CHECK_INTERVAL);
+
+})();
