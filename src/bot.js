@@ -1,4 +1,5 @@
 const TelegramBot = require("node-telegram-bot-api");
+
 const { BOT_TOKEN, CHECK_INTERVAL } = require("./config");
 const { checkDates } = require("./checker");
 
@@ -16,7 +17,7 @@ bot.onText(/\/start/, async (msg) => {
 bot.onText(/\/check/, async (msg) => {
   await bot.sendMessage(
     msg.chat.id,
-    "🔍 Vérification en cours..."
+    "🔍 Vérification manuelle..."
   );
 
   await checkDates();
@@ -27,10 +28,33 @@ bot.onText(/\/check/, async (msg) => {
   );
 });
 
+function isAllowedTime() {
+  const now = new Date();
+
+  const algeriaHour = Number(
+    now.toLocaleString("en-US", {
+      timeZone: "Africa/Algiers",
+      hour: "2-digit",
+      hour12: false
+    })
+  );
+
+  return algeriaHour >= 0 && algeriaHour < 9;
+}
+
+async function scheduledCheck() {
+  if (isAllowedTime()) {
+    console.log("Checking dates...");
+    await checkDates();
+  } else {
+    console.log("Outside allowed hours");
+  }
+}
+
 console.log("Bot started");
 
-checkDates();
+scheduledCheck();
 
 setInterval(() => {
-  checkDates();
+  scheduledCheck();
 }, CHECK_INTERVAL);
