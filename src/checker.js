@@ -1,17 +1,20 @@
-const TelegramBot = require("node-telegram-bot-api");
-
-const { BOT_TOKEN, CHAT_ID } = require("./config");
+const { CHAT_ID } = require("./config");
 const { getAvailableDates } = require("./api");
 const { loadDates, saveDates } = require("./storage");
 
-const bot = new TelegramBot(BOT_TOKEN);
-
-async function checkDates() {
-  console.log("Checking dates...");
+async function checkDates(bot) {
 
   const currentDates = await getAvailableDates();
 
-  if (!Array.isArray(currentDates)) return;
+  if (!Array.isArray(currentDates)) {
+
+    await bot.sendMessage(
+      CHAT_ID,
+      "⚠️ Réponse API invalide."
+    );
+
+    return;
+  }
 
   const oldDates = loadDates();
 
@@ -20,12 +23,21 @@ async function checkDates() {
   );
 
   if (newDates.length > 0) {
+
     for (const date of newDates) {
+
       await bot.sendMessage(
         CHAT_ID,
         `🚨 Nouveau rendez-vous disponible !\n\n📅 ${date}\n\nhttps://markabatidz.energy.gov.dz/Pers`
       );
     }
+
+  } else {
+
+    await bot.sendMessage(
+      CHAT_ID,
+      "❌ Aucun nouveau rendez-vous trouvé."
+    );
   }
 
   saveDates(currentDates);
