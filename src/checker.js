@@ -26,9 +26,9 @@ async function checkDates() {
         `🚨 Nouveau rendez-vous disponible !\n\n📅 ${date}\n\nhttps://markabatidz.energy.gov.dz/Pers`
       );
     }
-
-    saveDates(currentDates);
   }
+
+  saveDates(currentDates);
 }
 
 module.exports = {
